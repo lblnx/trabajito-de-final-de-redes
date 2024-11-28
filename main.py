@@ -419,6 +419,25 @@ async def poblacion_points(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en Cassandra: {str(e)}"}
 
     return {"message": "Datos de puntos añadidos correctamente a Cassandra"}
+#Query Cassandra points
+@app.get("/estadisticas-total-points")
+async def estadisticas_total_points():
+    try:
+        # Consulta para obtener la suma de total_points por equipo
+        query = """
+        SELECT team, SUM(total_points) AS total_points_sum
+        FROM nfl_team_points
+        GROUP BY team;
+        """
+        result = cassandra_session.execute(query)
+        
+        # Formato de los resultados
+        response_data = [{"team": row.team, "total_points_sum": row.total_points_sum} for row in result]
+
+        return {"message": "Consulta exitosa", "data": response_data}
+    
+    except Exception as e:
+        return {"error": f"Error al ejecutar la consulta en Cassandra: {str(e)}"}
 
 
 # ================================
