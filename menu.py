@@ -76,6 +76,8 @@ def seleccionar_jugadores(stdscr):
         "2. Yardas",
         "3. Pase",
         "4. Touchdown"
+        "5. Season"
+        "6. Yards"
     ]
 
     current_row = 0
