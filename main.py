@@ -216,7 +216,7 @@ async def poblar_stats(file: UploadFile = File(...)):
 
     return {"message": "Datos de estadisticas añadidos correctamente a MongoDB"}
 # ================================
-# Ruta para Poblar Datos de temporada en MongoDB
+# Ruta para Poblar touchdown en MongoDB
 # ================================
 @app.post("/poblar-td")
 async def poblar_td(file: UploadFile = File(...)):
@@ -252,7 +252,7 @@ async def poblar_td(file: UploadFile = File(...)):
 
     return {"message": "Datos de td añadidos correctamente a MongoDB"}
 # ================================
-# Ruta para Poblar Datos de temporada en MongoDB
+# Ruta para Poblar yardas en MongoDB
 # ================================
 @app.post("/poblar-yards")
 async def poblar_yards(file: UploadFile = File(...)):
