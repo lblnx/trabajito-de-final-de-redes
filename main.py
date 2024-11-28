@@ -35,83 +35,6 @@ def dgraph_client():
 
 dgraph_client_instance = dgraph_client()
 # ================================
-# Ruta para Borrar Datos de Cassandra
-# ================================
-@app.delete("/borrar-datos")
-async def borrar_datos(tabla: str, team: str = None, season: str = None):
-    """
-    Elimina los datos de una tabla específica en Cassandra, filtrando por equipo y temporada.
-    Si no se proporcionan 'team' y 'season', elimina todos los datos de la tabla.
-    """
-    try:
-        if tabla == "nfl_passes":
-            if team and season:
-                query = f"DELETE FROM nfl_passes WHERE team = '{team}' AND season = {season};"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE nfl_passes;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-        
-        elif tabla == "nfl_team_points":
-            if team and season:
-                query = f"DELETE FROM nfl_team_points WHERE team = '{team}' AND season = '{season}';"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE nfl_team_points;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-        
-        elif tabla == "nfl_team_stats":
-            if team and season:
-                query = f"DELETE FROM nfl_team_stats WHERE team = '{team}' AND season = '{season}';"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE nfl_team_stats;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-        
-        elif tabla == "Touchdown":
-            if team and season:
-                query = f"DELETE FROM Touchdown WHERE team = '{team}' AND season = {season};"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE Touchdown;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-
-        elif tabla == "Yards":
-            if team and season:
-                query = f"DELETE FROM Yards WHERE team = '{team}' AND season = {season};"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE Yards;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-
-        elif tabla == "Team":
-            if team and season:
-                query = f"DELETE FROM Team WHERE team = '{team}' AND season = {season};"
-                cassandra_session.execute(query)
-            elif not team and not season:
-                query = "TRUNCATE Team;"  # Eliminar todos los datos de la tabla
-                cassandra_session.execute(query)
-            else:
-                return {"error": "Se debe proporcionar 'team' y 'season' para borrar los datos o no proporcionar ninguno para borrar todos."}
-
-        else:
-            return {"error": "Tabla no reconocida."}
-        
-        return {"message": f"Datos de la tabla {tabla} eliminados correctamente."}
-    
-    except Exception as e:
-        return {"error": f"Error al borrar los datos: {str(e)}"}
-# ================================
 # Ruta para Poblar Datos de pases en MongoDB
 # ================================
 @app.post("/poblar-pass")
@@ -165,6 +88,7 @@ async def poblar_personal_inf(file: UploadFile = File(...)):
     # Validar columnas requeridas
     columnas_requeridas_equipos = [
         'player_id',
+        'player_name',
     'height',
     'weight',
     'college',
@@ -187,6 +111,37 @@ async def poblar_personal_inf(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en MongoDB: {str(e)}"}
 
     return {"message": "Datos personales añadidos correctamente a MongoDB"}
+# query MONGODB
+@app.get("/estadisticas-generales")
+async def estadisticas_generales():
+    try:
+        # Consulta de agregación en MongoDB
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,  # No agrupamos por nada específico
+                    "averageHeight": {"$avg": "$height"},
+                    "averageWeight": {"$avg": "$weight"},
+                    "averageAge": {"$avg": "$age"},
+                    "maxHeight": {"$max": "$height"},
+                    "minHeight": {"$min": "$height"},
+                    "maxWeight": {"$max": "$weight"},
+                    "minWeight": {"$min": "$weight"}
+                }
+            }
+        ]
+        
+        result = list(mongo_collection_personal_inf.aggregate(pipeline))
+        
+        # Si el resultado no está vacío, devolver las estadísticas
+        if result:
+            stats = result[0]  # Dado que solo estamos usando `_id: None`, solo habrá un resultado
+            return {"statistics": stats}
+        else:
+            return {"error": "No se encontraron datos para calcular estadísticas."}
+    
+    except Exception as e:
+        return {"error": f"Error al calcular estadísticas: {str(e)}"}
 
 # ================================
 # Ruta para Poblar Datos de temporada en MongoDB
