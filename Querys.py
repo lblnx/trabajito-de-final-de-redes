@@ -44,17 +44,17 @@ def get_team_stats_by_season(session: Session, team: str):
         raise Exception(f"Error al ejecutar la consulta en Cassandra: {str(e)}")   
 
 #-------Query de yardas --------
-def get_team_yards_by_season(session, team_name, season):
+def get_team_yards_by_season(session, team: str, season: int):
     query = """
-    SELECT team, season, SUM(total_yards) as total_yards
-    FROM nfl_team_yards
+    SELECT team, season, SUM(yards_gained) as total_yards
+    FROM yards
     WHERE team = %s AND season = %s
     GROUP BY team, season;
     """
-    result = session.execute(query, (team_name, season))
+    result = session.execute(query, (team, season))
     return result
 #--------Query de Touchdowns--------
-def get_team_touchdowns_by_season(session, team_name, season):
+def get_team_touchdowns_by_season(session, team: str, season: int):
     query = """
     SELECT team, season, 
            SUM(receiving_td) as total_receiving_td, 
@@ -65,5 +65,5 @@ def get_team_touchdowns_by_season(session, team_name, season):
     WHERE team = %s AND season = %s
     GROUP BY team, season;
     """
-    result = session.execute(query, (team_name, season))
+    result = session.execute(query, (team, season))
     return result

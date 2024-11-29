@@ -213,7 +213,7 @@ async def estadisticas_equipos_temporada():
 
         # Si las estadísticas existen, devolverlas como respuesta
         if stats:
-            return {"estadisticas": stats}
+            return {"data": stats}
         else:
             return {"message": "No se encontraron estadísticas para los equipos por temporada."}
 
@@ -635,7 +635,7 @@ async def poblacion_touchdown(file: UploadFile = File(...)):
 
     return {"message": "Datos de touchdowns añadidos correctamente a Cassandra"}
 # Ruta para obtener estadísticas de touchdowns por equipo y temporada
-@app.get("/get-team-touchdowns")
+@app.get("/get-team-touchdowns/{team}/{season}")
 async def get_team_touchdowns(team: str, season: int):
     try:
         # Llamar a la función de consulta
@@ -780,8 +780,8 @@ async def poblacion_yards(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en Cassandra: {str(e)}"}
 
     return {"message": "Datos de Yards añadidos correctamente a Cassandra"}
-@app.get("/get-team-yards")
-async def get_team_yards(team: str, season: str):
+@app.get("/get-team-yards/{team}/{season}")
+async def get_team_yards(team: str, season: int):
     try:
         # Llamar a la función de la consulta
         result = get_team_yards_by_season(cassandra_session, team, season)
