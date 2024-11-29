@@ -79,17 +79,16 @@ def obtener_estadisticas_equipos_por_temporada(mongo_collection: Collection):
 #-------Estadisticas de pases interceptados por temporada-------
 def obtener_intercepciones_por_temporada(mongo_collection: Collection):
     try:
-        # Definir el pipeline de agregación
         pipeline = [
             {
                 "$group": {
-                    "_id": {"season": "$season"},  # Agrupar por temporada
-                    "totalIntercepciones": {"$sum": "$interception"}  # Sumar las intercepciones
+                    "_id": {"season": "$season"},  
+                    "totalIntercepciones": {"$sum": "$interception"}  
                 }
             },
             {
                 "$project": {
-                    "totalIntercepciones": 1  # Mostrar solo el total de intercepciones
+                    "totalIntercepciones": 1  
                 }
             }
         ]
@@ -115,13 +114,13 @@ def obtener_pases_incompletos_por_temporada(mongo_collection: Collection):
         pipeline = [
             {
                 "$group": {
-                    "_id": {"season": "$season"},  # Agrupar por temporada
-                    "totalPasesIncompletos": {"$sum": "$incomplete_pass"}  # Sumar los pases incompletos
+                    "_id": {"season": "$season"}, 
+                    "totalPasesIncompletos": {"$sum": "$incomplete_pass"} 
                 }
             },
             {
                 "$project": {
-                    "totalPasesIncompletos": 1  # Mostrar solo el total de pases incompletos
+                    "totalPasesIncompletos": 1  
                 }
             }
         ]
