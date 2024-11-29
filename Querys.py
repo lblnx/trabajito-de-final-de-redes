@@ -15,7 +15,7 @@ def get_total_points_by_team(session: Session):
         return [{"team": row.team, "total_points_sum": row.total_points_sum} for row in rows]
     except Exception as e:
         raise Exception(f"Error al ejecutar la consulta en Cassandra: {str(e)}")
- #------------Query de Stadisticas de equipos--------------
+#------------Query de Stadisticas de equipos--------------
 def get_team_stats_by_season(session: Session, team: str):
     """
     Consulta que obtiene estadísticas de un equipo específico por temporada.
@@ -43,7 +43,7 @@ def get_team_stats_by_season(session: Session, team: str):
     except Exception as e:
         raise Exception(f"Error al ejecutar la consulta en Cassandra: {str(e)}")   
 
- #-------Query de yardas --------
+#-------Query de yardas --------
 def get_team_yards_by_season(session, team_name, season):
     query = """
     SELECT team, season, SUM(total_yards) as total_yards
@@ -53,7 +53,7 @@ def get_team_yards_by_season(session, team_name, season):
     """
     result = session.execute(query, (team_name, season))
     return result
- #--------Query de Touchdowns--------
+#--------Query de Touchdowns--------
 def get_team_touchdowns_by_season(session, team_name, season):
     query = """
     SELECT team, season, 
