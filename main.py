@@ -1,11 +1,19 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from cassandra.cluster import Cluster
-from pymongo import MongoClient
+from pymongo import MongoClient, collection
 import pydgraph
 import pandas as pd
 from datetime import datetime
 from io import StringIO
-
+from Querys import get_total_points_by_team
+from Querys import get_team_stats_by_season
+from Querys import get_team_yards_by_season
+from Querys import get_team_touchdowns_by_season
+#-----------Imports de Querys_Mongo------------
+from Querys_Mongo import obtener_estadisticas_generales
+from Querys_Mongo import obtener_estadisticas_equipos_por_temporada
+from Querys_Mongo import obtener_intercepciones_por_temporada
+from Querys_Mongo import obtener_pases_incompletos_por_temporada
 app = FastAPI()
 
 # ================================
@@ -73,7 +81,44 @@ async def poblar_pass(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en MongoDB: {str(e)}"}
 
     return {"message": "Datos de pases añadidos correctamente a MongoDB"}
+#-----Estadsiticas de  intercepciones por temporada--------
+@app.get("/intercepciones-temporada")
+async def obtener_intercepciones(temporada: str = None):
+    try:
+        # Realizamos la consulta para obtener las intercepciones por temporada
+        estadisticas = obtener_intercepciones_por_temporada(mongo_collection_pass)
 
+        # Filtrar las estadísticas si se pasó el parámetro de temporada
+        if temporada:
+            estadisticas = [item for item in estadisticas if item["temporada"] == temporada]
+
+        # Si no se encontraron estadísticas
+        if not estadisticas:
+            return {"error": "No se encontraron estadísticas de intercepciones para la temporada proporcionada."}
+
+        return {"intercepciones_temporada": estadisticas}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener las intercepciones por temporada: {str(e)}")
+#-------- Estadsiticas de pases incompletos por temporada --------
+@app.get("/pases-incompletos-temporada")
+async def obtener_pases_incompletos(temporada: str = None):
+    try:
+        # Realizamos la consulta para obtener los pases incompletos por temporada
+        estadisticas = obtener_pases_incompletos_por_temporada(mongo_collection_pass)
+
+        # Filtrar las estadísticas si se pasó el parámetro de temporada
+        if temporada:
+            estadisticas = [item for item in estadisticas if item["temporada"] == temporada]
+
+        # Si no se encontraron estadísticas
+        if not estadisticas:
+            return {"error": "No se encontraron estadísticas de pases incompletos para la temporada proporcionada."}
+
+        return {"pases_incompletos_temporada": estadisticas}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener los pases incompletos por temporada: {str(e)}")
 # ================================
 # Ruta para Poblar Datos de informacion personal en MongoDB
 # ================================
@@ -111,38 +156,18 @@ async def poblar_personal_inf(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en MongoDB: {str(e)}"}
 
     return {"message": "Datos personales añadidos correctamente a MongoDB"}
-# query MONGODB
+#------Query estadisticas genrales------------
 @app.get("/estadisticas-generales")
 async def estadisticas_generales():
     try:
-        # Consulta de agregación en MongoDB
-        pipeline = [
-            {
-                "$group": {
-                    "_id": None,  # No agrupamos por nada específico
-                    "averageHeight": {"$avg": "$height"},
-                    "averageWeight": {"$avg": "$weight"},
-                    "averageAge": {"$avg": "$age"},
-                    "maxHeight": {"$max": "$height"},
-                    "minHeight": {"$min": "$height"},
-                    "maxWeight": {"$max": "$weight"},
-                    "minWeight": {"$min": "$weight"}
-                }
-            }
-        ]
-        
-        result = list(mongo_collection_personal_inf.aggregate(pipeline))
-        
-        # Si el resultado no está vacío, devolver las estadísticas
-        if result:
-            stats = result[0]  # Dado que solo estamos usando `_id: None`, solo habrá un resultado
+        stats = obtener_estadisticas_generales(mongo_collection_personal_inf)
+        if stats:
             return {"statistics": stats}
         else:
             return {"error": "No se encontraron datos para calcular estadísticas."}
     
     except Exception as e:
         return {"error": f"Error al calcular estadísticas: {str(e)}"}
-
 # ================================
 # Ruta para Poblar Datos de temporada en MongoDB
 # ================================
@@ -178,8 +203,24 @@ async def poblar_season(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en MongoDB: {str(e)}"}
 
     return {"message": "Datos de temporadas añadidos correctamente a MongoDB"}
+#----Datos de equipo por temporada-----
+@app.get("/estadisticas-equipos-temporada")
+async def estadisticas_equipos_temporada():
+    try:
+        # Llamar a la función que obtiene las estadísticas de los equipos por temporada
+        stats = obtener_estadisticas_equipos_por_temporada(mongo_collection_season)
+
+        # Si las estadísticas existen, devolverlas como respuesta
+        if stats:
+            return {"estadisticas": stats}
+        else:
+            return {"message": "No se encontraron estadísticas para los equipos por temporada."}
+
+    except Exception as e:
+        return {"error": f"Error al obtener estadísticas de equipos por temporada: {str(e)}"}
+
 # ================================
-# Ruta para Poblar Datos de estadisticas en MongoDB
+# Ruta para Poblar datos de estadisticas en MongoDB
 # ================================
 @app.post("/poblar-stats")
 async def poblar_stats(file: UploadFile = File(...)):
@@ -215,6 +256,7 @@ async def poblar_stats(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en MongoDB: {str(e)}"}
 
     return {"message": "Datos de estadisticas añadidos correctamente a MongoDB"}
+
 # ================================
 # Ruta para Poblar touchdown en MongoDB
 # ================================
@@ -398,7 +440,7 @@ async def poblacion_points(file: UploadFile = File(...)):
     try:
         cassandra_session.execute(create_table_query)
     except Exception as e:
-        return {"error": f"Error al crear la tabla en Cassandra: {str(e)}"}
+        return {"error": f"Error al crear la tabla en Cassandra: {str(e)}"}    
 
     # Insertar datos en Cassandra
     try:
@@ -420,24 +462,14 @@ async def poblacion_points(file: UploadFile = File(...)):
 
     return {"message": "Datos de puntos añadidos correctamente a Cassandra"}
 #Query Cassandra points
-@app.get("/estadisticas-total-points")
-async def estadisticas_total_points():
+@app.get("/puntos-totales-por-equipo")
+async def puntos_totales_por_equipo():
     try:
-        # Consulta para obtener la suma de total_points por equipo
-        query = """
-        SELECT team, SUM(total_points) AS total_points_sum
-        FROM nfl_team_points
-        GROUP BY team;
-        """
-        result = cassandra_session.execute(query)
-        
-        # Formato de los resultados
-        response_data = [{"team": row.team, "total_points_sum": row.total_points_sum} for row in result]
-
-        return {"message": "Consulta exitosa", "data": response_data}
-    
+        resultados = get_total_points_by_team(cassandra_session)
     except Exception as e:
-        return {"error": f"Error al ejecutar la consulta en Cassandra: {str(e)}"}
+        return {"error": str(e)}
+
+    return {"data": resultados}
 
 
 # ================================
@@ -519,7 +551,21 @@ async def poblacion_stats(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en Cassandra: {str(e)}"}
 
     return {"message": "Datos de estadisticas añadidos correctamente a Cassandra"}
+#query
+@app.get("/stats-por-equipo/{team}")
+async def stats_por_equipo(team: str):
+    """
+    Ruta para obtener estadísticas de un equipo específico por temporada.
+    """
+    try:
+        resultados = get_team_stats_by_season(cassandra_session, team)
+    except Exception as e:
+        return {"error": str(e)}
 
+    if not resultados:
+        return {"message": f"No se encontraron estadísticas para el equipo {team}"}
+
+    return {"data": resultados}
     
 # ================================
 # Ruta para Poblar touchdown en Cassandra
@@ -587,6 +633,28 @@ async def poblacion_touchdown(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en Cassandra: {str(e)}"}
 
     return {"message": "Datos de touchdowns añadidos correctamente a Cassandra"}
+# Ruta para obtener estadísticas de touchdowns por equipo y temporada
+@app.get("/get-team-touchdowns")
+async def get_team_touchdowns(team: str, season: int):
+    try:
+        # Llamar a la función de consulta
+        result = get_team_touchdowns_by_season(cassandra_session, team, season)
+        
+        # Verificar si hay resultados
+        if result:
+            return {
+                "team": team,
+                "season": season,
+                "total_receiving_td": result[0].total_receiving_td,
+                "total_run_td": result[0].total_run_td,
+                "total_pass_td": result[0].total_pass_td,
+                "total_touchdowns": result[0].total_touchdowns
+            }
+        else:
+            return {"message": "No se encontraron datos para el equipo y la temporada especificados."}
+    except Exception as e:
+        return {"error": f"Error al ejecutar la consulta: {str(e)}"}
+
 # ================================
 # Ruta para Poblar equipos en Cassandra
 # ================================
@@ -711,3 +779,16 @@ async def poblacion_yards(file: UploadFile = File(...)):
         return {"error": f"Error al insertar datos en Cassandra: {str(e)}"}
 
     return {"message": "Datos de Yards añadidos correctamente a Cassandra"}
+@app.get("/get-team-yards")
+async def get_team_yards(team: str, season: str):
+    try:
+        # Llamar a la función de la consulta
+        result = get_team_yards_by_season(cassandra_session, team, season)
+        
+        # Verificar si hay resultados
+        if result:
+            return {"team": team, "season": season, "total_yards": result[0].total_yards}
+        else:
+            return {"message": "No se encontraron datos para el equipo y la temporada especificados."}
+    except Exception as e:
+        return {"error": f"Error al ejecutar la consulta: {str(e)}"}
