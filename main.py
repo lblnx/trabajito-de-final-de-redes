@@ -5,6 +5,7 @@ import pydgraph
 import pandas as pd
 from datetime import datetime
 from io import StringIO
+#----------Imports de querys Cassandra--------
 from Querys import get_total_points_by_team
 from Querys import get_team_stats_by_season
 from Querys import get_team_yards_by_season
